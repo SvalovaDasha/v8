@@ -1,38 +1,5 @@
-// Copyright 2012 the V8 project authors. All rights reserved.
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are
-// met:
-//
-//     * Redistributions of source code must retain the above copyright
-//       notice, this list of conditions and the following disclaimer.
-//     * Redistributions in binary form must reproduce the above
-//       copyright notice, this list of conditions and the following
-//       disclaimer in the documentation and/or other materials provided
-//       with the distribution.
-//     * Neither the name of Google Inc. nor the names of its
-//       contributors may be used to endorse or promote products derived
-//       from this software without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-// "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-// LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-// A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-// OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-// LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-// TODO(dcarney): remove this
-#define V8_ALLOW_ACCESS_TO_RAW_HANDLE_CONSTRUCTOR
-#define V8_ALLOW_ACCESS_TO_PERSISTENT_IMPLICIT
-#define V8_ALLOW_ACCESS_TO_PERSISTENT_ARROW
-
 #include <v8.h>
 #include <assert.h>
-#include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,19 +7,6 @@
 #include <string>
 #include <vector>
 #include <map>
-
-#ifdef COMPRESS_STARTUP_DATA_BZ2
-#error Using compressed startup data is not supported for this sample
-#endif
-
-/**
- * This sample program shows how to implement a simple javascript shell
- * based on V8.  This includes initializing V8 with command line options,
- * creating global functions, compiling and executing strings.
- *
- * For a more sophisticated shell, consider using the debug shell D8.
- */
-
 
 v8::Handle<v8::Context> CreateShellContext(v8::Isolate* isolate);
 void RunShell(v8::Handle<v8::Context> context);
@@ -90,7 +44,7 @@ v8::Handle<v8::String> ReadFile(const char* name);
 void ReportException(v8::Isolate* isolate, v8::TryCatch* handler);
 
 struct JSFile{
-  FILE* fn;
+	FILE* fn;
 	int column;
 	int line;
 
@@ -356,17 +310,23 @@ v8::Handle<v8::Value> StdInClose(const v8::Arguments& args) {
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
 		return v8::ThrowException(ex);
 	}
-	if(stdIn.isClose == true){
-		exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
-		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
-		v8::Local<v8::Object> ex = exTemplate->NewInstance();
-		return v8::ThrowException(ex);
-	}
 	stdIn.isClose = true;
 	return v8::Undefined();
 }
 
 v8::Handle<v8::Value> StdOutClose(const v8::Arguments& args) {
+	v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
+	if(args.Length() != 0){
+		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
+		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalArgs));
+		v8::Local<v8::Object> ex = exTemplate->NewInstance();
+		return v8::ThrowException(ex);
+	}
+	stdOut.isClose = true;
+	return v8::Undefined();
+}
+
+v8::Handle<v8::Value> SkipLine(const v8::Arguments& args) {
 	v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
 	if(args.Length() != 0){
 		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
@@ -380,31 +340,8 @@ v8::Handle<v8::Value> StdOutClose(const v8::Arguments& args) {
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
 		return v8::ThrowException(ex);
 	}
-	stdOut.isClose = true;
-	return v8::Undefined();
-}
-
-v8::Handle<v8::Value> SkipLine(const v8::Arguments& args) {
-	v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
-	if(args.Length() != 1){
-		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
-		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalArgs));
-		v8::Local<v8::Object> ex = exTemplate->NewInstance();
-		return v8::ThrowException(ex);
-	}
-	if(!args[0]->IsInt32()){
-		exTemplate->Set(v8::String::New("description"), v8::String::New("Illegal type"));
-		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalType));
-		v8::Local<v8::Object> ex = exTemplate->NewInstance();
-		return v8::ThrowException(ex);
-	}
-	if(stdIn.isClose == true){
-		exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
-		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
-		v8::Local<v8::Object> ex = exTemplate->NewInstance();
-		return v8::ThrowException(ex);
-	}
-	ReadLine(args);
+	std::string str;
+	std::getline(std::cin, str);
 	return v8::Undefined();
 }
 
@@ -422,7 +359,7 @@ v8::Handle<v8::Value> WriteBlankLines(const v8::Arguments& args){
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
 		return v8::ThrowException(ex);
 	}
-	if(stdIn.isClose == true){
+	if(stdOut.isClose == true){
 		exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
 		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
@@ -430,19 +367,19 @@ v8::Handle<v8::Value> WriteBlankLines(const v8::Arguments& args){
 	}
 	int counter = args[0]->Int32Value();
 	for(int i=0; i<counter; i++)
-		std::cout<<"\n\n";
+		std::cout<<"\n";
 	return v8::Undefined();
 }
 
 v8::Handle<v8::Value> WriteLine(const v8::Arguments& args) {
 	v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
-	if(args.Length() != 1){
+	if(args.Length() > 1){
 		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
 		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalArgs));
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
 		return v8::ThrowException(ex);
 	}
-	if(stdIn.isClose == true){
+	if(stdOut.isClose == true){
 		exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
 		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
@@ -451,7 +388,10 @@ v8::Handle<v8::Value> WriteLine(const v8::Arguments& args) {
 	v8::HandleScope handle_scope(args.GetIsolate());
 	v8::String::Utf8Value str(args[0]);
 	const char* cstr = ToCString(str);
-	printf("%s\n", cstr);
+	if(args.Length() == 0)
+		printf("\n");
+	else
+		printf("%s\n", cstr);
 	fflush(stdout);
 	return v8::Undefined();
 }
@@ -464,7 +404,7 @@ v8::Handle<v8::Value> Write(const v8::Arguments& args) {
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
 		return v8::ThrowException(ex);
 	}
-	if(stdIn.isClose == true){
+	if(stdOut.isClose == true){
 		exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
 		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
@@ -480,20 +420,20 @@ v8::Handle<v8::Value> Write(const v8::Arguments& args) {
 
 v8::Handle<v8::Value> ReadLine(const v8::Arguments& args) {
 	v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
-	if(stdIn.isClose == true){
-		exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
-		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
+	if(args.Length() != 0){
+		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
+		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalArgs));
 		v8::Local<v8::Object> ex = exTemplate->NewInstance();
 		return v8::ThrowException(ex);
 	}
-	std::string str;
-	std::getline(std::cin, str);
-	if(args.Length() != 0){
-			exTemplate->Set(v8::String::New("description"), v8::String::New("The object is not a family"));
-			exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIsNFamily));
+	if(stdIn.isClose == true){
+			exTemplate->Set(v8::String::New("description"), v8::String::New("Object variable or block With variable does'n set"));
+			exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeObjVarOrBlockDNSet));
 			v8::Local<v8::Object> ex = exTemplate->NewInstance();
 			return v8::ThrowException(ex);
 	}
+	std::string str;
+	std::getline(std::cin, str);
 	int strLen = str.length();
 	char* chars = new char[strLen + 1];
 	chars[strLen] = '\0';
@@ -570,10 +510,10 @@ v8::Handle<v8::Value> ReadAll(const v8::Arguments& args){
 v8::Handle<v8::Value> newActiveXObject(const v8::Arguments& args) {
 	v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
 	if(args.Length() != 1){
-		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
-		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalArgs));
-		v8::Local<v8::Object> ex = exTemplate->NewInstance();
-		return v8::ThrowException(ex);
+			exTemplate->Set(v8::String::New("description"), v8::String::New("Illegal type"));
+			exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalType));
+			v8::Local<v8::Object> ex = exTemplate->NewInstance();
+			return v8::ThrowException(ex);
 	}
 	if(!args[0]->Equals(v8::String::New("Scripting.FileSystemObject"))){
 		exTemplate->Set(v8::String::New("description"), v8::String::New("This Argument ins't supported"));
@@ -588,8 +528,12 @@ v8::Handle<v8::Value> newActiveXObject(const v8::Arguments& args) {
 }
 
 v8::Handle<v8::Value> createTextFile(const v8::Arguments& args) {
-	if(args.Length() != 1){
-			return v8::ThrowException(v8::String::New("Wrong number of arguments"));
+	if(args.Length() == 0){
+		v8::Handle<v8::ObjectTemplate> exTemplate = v8::ObjectTemplate::New();
+		exTemplate->Set(v8::String::New("description"), v8::String::New("Invalid number of arguments or appropriation of property value"));
+		exTemplate->Set(v8::String::New("number"), v8::Int32::New(codeIllegalArgs));
+		v8::Local<v8::Object> ex = exTemplate->NewInstance();
+		return v8::ThrowException(ex);
 	}
 	v8::String::Utf8Value file(args[0]);
 	char* fileName = *file;
@@ -649,7 +593,7 @@ v8::Handle<v8::Value> Quit(const v8::Arguments& args) {
 
 // The read-eval-execute loop of the shell.
 void RunShell(v8::Handle<v8::Context> context) {
-  fprintf(stderr, "V8 version %s [sample shell]\n", v8::V8::GetVersion());
+  fprintf(stderr, "V8 version %s extended[cscript]\n", v8::V8::GetVersion());
   static const int kBufferSize = 256;
   // Enter the execution environment before evaluating any code.
   v8::Context::Scope context_scope(context);
